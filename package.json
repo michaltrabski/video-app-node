@@ -1,0 +1,31 @@
+{
+  "name": "video-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "concurrently \"npm run nodemon\" \"npm run open\"",
+    "nodemon": "nodemon app.js",
+    "open": "start http://localhost:5050/"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^6.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "fs-extra": "^10.0.0",
+    "lodash": "^4.17.21",
+    "nodemon": "^2.0.7",
+    "open": "^8.2.0"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "videos"
+    ]
+  }
+}
