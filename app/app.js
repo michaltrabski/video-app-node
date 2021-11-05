@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const fs = require("fs-extra");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const {
@@ -8,6 +9,7 @@ const {
   selectVideosFragments,
   trimVideos,
   mergeVideos,
+  getFolders,
 } = require("./utils");
 require("dotenv").config();
 
@@ -15,22 +17,29 @@ const PORT = process.env.PORT || 5050;
 
 const settings = {
   produceImmediately: true,
-  finalVideoName:
-    "2) FULL 02.10.2021 Buschcraft z Jasiem na działce w bolesławcu",
-};
-
-const myStart = () => {
-  start(settings);
+  finalVideoName: "hhhhhhhhhhhhhhhhhh",
+  baseVideoFolder: "videos",
 };
 
 const start = async (settings) => {
-  const videos = await getAllVideos("videos");
+  const { baseVideoFolder, finalVideoName, produceImmediately } = settings;
+
+  fs.ensureDirSync(baseVideoFolder);
+  const foldersList = getFolders(baseVideoFolder, ["myTemp", "result", "temp"]);
+
+  const folderWithVideos = foldersList[0];
+
+  const videos = await getAllVideos(baseVideoFolder, folderWithVideos);
+
   const videosWithFragments = selectVideosFragments(videos);
 
-  if (settings.produceImmediately) {
-    const videosToMerge = await trimVideos(videosWithFragments);
+  if (produceImmediately) {
+    const videosToMerge = await trimVideos(
+      folderWithVideos,
+      videosWithFragments
+    );
     // console.log("działa", videos, videosWithFragments, videosToMerge);
-    const result = await mergeVideos(videosToMerge, settings.finalVideoName);
+    const result = await mergeVideos(videosToMerge, folderWithVideos);
     console.log("Wideo Gotowe => ", result);
   } else {
     console.log(
@@ -41,14 +50,15 @@ const start = async (settings) => {
   return videosWithFragments;
 };
 
+const myStart = () => start(settings);
+
 // SERVER
 app.use(express.static("videos"));
 app.use(bodyParser.json());
 app.use(cors());
 
 app.get("/", async (req, res) => {
-  const videos = await start(false);
-  console.log(4444444444);
+  const videos = await start(settings);
   res.send({ videos });
 });
 

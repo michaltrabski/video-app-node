@@ -3,6 +3,22 @@ const ffmpeg = require("fluent-ffmpeg");
 const fs = require("fs-extra");
 const _ = require("lodash");
 
+const getFolders = (baseVideoFolder, excludeFolders = []) => {
+  const foldersList = [];
+
+  const items = fs.readdirSync(baseVideoFolder);
+
+  items.forEach((item) => {
+    const itemWithPath = path.resolve(baseVideoFolder, item);
+    if (
+      !excludeFolders.includes(item) &&
+      fs.lstatSync(itemWithPath).isDirectory()
+    )
+      foldersList.push(item);
+  });
+
+  return foldersList;
+};
 const rnd = (min = 0, max = 1) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -38,9 +54,13 @@ const findFragments = (videoObj) => {
 
   start = parseFloat(start.toFixed(2));
   end = parseFloat(end.toFixed(2));
+
+  start_0 = parseFloat(start.toFixed(0));
+  end_0 = parseFloat(end.toFixed(0));
+
   fragmentDuration = parseFloat(fragmentDuration.toFixed(2));
 
-  const fragmentName = mp4(`${noExt(fileName)}-${start}-${end}-${width}`);
+  const fragmentName = mp4(`${noExt(fileName)}_${start_0}_${end_0}_${width}`);
   fragments.push({
     start,
     end,
@@ -57,13 +77,17 @@ const findFragments = (videoObj) => {
   return { ...videoObj, fragments: mergedFragments };
 };
 
-const getAllVideos = async (folderName) => {
-  fs.ensureDirSync(folderName);
+const getAllVideos = async (baseVideoFolder, folderWithVideos) => {
+  const folderName = path.resolve(baseVideoFolder, folderWithVideos);
+
   const files = fs.readdirSync(folderName);
   const videos = [];
   for (const fileName of files) {
     if (isMp4(fileName)) {
-      const { duration, creation_time } = await getVideoMetadata(fileName);
+      const fileNameWithPath = path.resolve(folderName, fileName);
+      const { duration, creation_time } = await getVideoMetadata(
+        fileNameWithPath
+      );
 
       const transcriptDetected = fs.existsSync(
         path.resolve(folderName, json(fileName))
@@ -112,11 +136,13 @@ const mergeVideos = (videosToMerge, _resultVideoName) => {
     fs.ensureDirSync(path.resolve("videos", "result"));
     const fileOutput = path.resolve("videos", "result", resultVideoName);
 
-    // if (fs.existsSync(fileOutput)) {
-    //   console.log("FILE IS ALLREADY THERE ", fileOutput);
-    //   resolve(resultVideoName);
-    //   return;
-    // }
+    const resolvePromise = (resolveValue) => resolve(resolveValue);
+
+    if (fs.existsSync(fileOutput)) {
+      console.log("FILE IS ALLREADY THERE ", fileOutput);
+      resolvePromise(resultVideoName);
+      return;
+    }
 
     const videos = videosToMerge.map((video) =>
       path.resolve("videos", "temp", video)
@@ -144,7 +170,7 @@ const mergeVideos = (videosToMerge, _resultVideoName) => {
       })
       .on("end", () => {
         console.log("Ended!");
-        resolve(resultVideoName);
+        resolvePromise(resultVideoName);
       })
       .on("progress", (progress) =>
         console.log(Math.floor(progress.percent) + "%")
@@ -152,21 +178,30 @@ const mergeVideos = (videosToMerge, _resultVideoName) => {
   });
 };
 
-const trimVideo = (videoName, start, end, fragmentName) => {
+const trimVideo = (folderWithVideos, videoName, start, end, fragmentName) => {
   return new Promise((resolve, reject) => {
+    const temp = path.resolve("videos", "temp");
+    const tempFileName = path.resolve(temp, `temp_${Math.random()}.mp4`);
     // console.log(1, id, name, start, end);
     const endMinusStart = end - start;
-    const fileInput = path.resolve("videos", videoName);
+    const fileInput = path.resolve("videos", folderWithVideos, videoName);
 
-    fs.ensureDirSync(path.resolve("videos", "temp"));
-    const fileOutput = path.resolve("videos", "temp", fragmentName);
+    fs.ensureDirSync(temp);
+    const fileOutput = path.resolve(temp, fragmentName);
+
+    const resolvePromise = (resolveValue) => {
+      if (fs.existsSync(tempFileName)) fs.renameSync(tempFileName, fileOutput);
+      resolve(resolveValue);
+    };
 
     // check if fileOutput is allready produced
-    // if (fs.existsSync(fileOutput)) {
-    //   console.log("FILE IS ALLREADY THERE ", fileOutput);
-    //   resolve(fragmentName);
-    //   return;
-    // }
+
+    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!! ");
+    if (fs.existsSync(fileOutput)) {
+      console.log("FILE IS ALLREADY THERE ", fileOutput);
+      resolvePromise(fileOutput);
+      return;
+    }
 
     ffmpeg.ffprobe(fileInput, (err, metaData) => {
       if (err) return console.log("error_2", err);
@@ -190,10 +225,10 @@ const trimVideo = (videoName, start, end, fragmentName) => {
         // .outputOptions([
         //   "-filter:v zoompan=d=1:x=iw/2-(iw/zoom/2):y=ih/2-(ih/zoom/2)",
         // ])
-        .output(fileOutput)
+        .output(tempFileName)
         .on("end", () => {
           console.log("done");
-          resolve(fragmentName);
+          resolvePromise(fragmentName);
         })
         .on("error", (err) => {
           console.log("error!", err);
@@ -214,7 +249,7 @@ const trimVideo = (videoName, start, end, fragmentName) => {
   });
 };
 
-const trimVideos = async (videos) => {
+const trimVideos = async (folderWithVideos, videos) => {
   const fragments = [];
   const videosToMerge = [];
 
@@ -227,6 +262,7 @@ const trimVideos = async (videos) => {
   for (const fragment of fragments) {
     const { videoName, start, end, fragmentName } = fragment;
     const trimedVideoName = await trimVideo(
+      folderWithVideos,
       videoName,
       start,
       end,
@@ -325,6 +361,7 @@ const getVideoMetadata = async (videoName) => {
 };
 
 module.exports = {
+  getFolders,
   selectVideosFragments,
   getAllVideos,
   getVideoMetadata,
