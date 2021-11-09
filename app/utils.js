@@ -40,34 +40,80 @@ const findFragments = (videoObj) => {
 
   if (transcriptDetected) {
     // get video fragments based on transcript
-    for (const part of transcript) {
-      start = part.timestamp;
-      end = part.timestamp + 1;
-    }
+
+    throw new Error("Wideo with transcript are not ready to use!!!");
+    // for (const part of transcript) {
+    //   start = part.timestamp;
+    //   end = part.timestamp + 1;
+    // }
   } else {
     // get fragment based on procent
-    console.log(`I take ${procent}% from ${fileName} + ${margin}% margin`);
-    start = duration / 2 - newDuration / 2;
-    end = duration / 2 + newDuration / 2;
-    fragmentDuration = end - start;
+
+    const dMin = +process.env.DURATION61FROM;
+    const dMax = +process.env.DURATION61TO;
+
+    if (duration < 61) {
+      const newD = rnd(dMin, dMax); // console.log("newD =>", rnd(dMin, dMax));
+      console.log(`I take ${dMin},${dMax}=>${newD}s from ${fileName}`);
+
+      start = duration / 2 - newD / 2;
+      end = duration / 2 + newD / 2;
+      fragmentDuration = end - start;
+
+      start = parseFloat(start.toFixed(2));
+      end = parseFloat(end.toFixed(2));
+
+      start_0 = parseFloat(start.toFixed(0));
+      end_0 = parseFloat(end.toFixed(0));
+
+      fragmentDuration = parseFloat(fragmentDuration.toFixed(2));
+
+      const fragmentName = mp4(
+        `${noExt(fileName)}_${start_0}_${end_0}_${width}`
+      );
+      fragments.push({
+        start,
+        end,
+        fragmentDuration,
+        fragmentName,
+        videoName: fileName,
+      });
+    }
+
+    if (duration >= 61) {
+      const numberOfFragments = parseFloat((duration / 60).toFixed(0));
+
+      for (let i = 0; i < numberOfFragments; i++) {
+        const tempDuration = Math.floor(duration / numberOfFragments);
+
+        const newD = rnd(dMin, dMax); // console.log("newD =>", rnd(dMin, dMax));
+        console.log(`I take ${dMin},${dMax}=>${newD}s from ${fileName}`);
+
+        start = tempDuration / 2 - newD / 2 + 60 * i;
+        end = tempDuration / 2 + newD / 2 + 60 * i;
+        fragmentDuration = end - start;
+
+        start = parseFloat(start.toFixed(2));
+        end = parseFloat(end.toFixed(2));
+
+        start_0 = parseFloat(start.toFixed(0));
+        end_0 = parseFloat(end.toFixed(0));
+
+        fragmentDuration = parseFloat(fragmentDuration.toFixed(2));
+
+        const fragmentName = mp4(
+          `${noExt(fileName)}_${start_0}_${end_0}_${width}`
+        );
+        fragments.push({
+          start,
+          end,
+          fragmentDuration,
+          fragmentName,
+          videoName: fileName,
+        });
+      }
+    }
   }
-
-  start = parseFloat(start.toFixed(2));
-  end = parseFloat(end.toFixed(2));
-
-  start_0 = parseFloat(start.toFixed(0));
-  end_0 = parseFloat(end.toFixed(0));
-
-  fragmentDuration = parseFloat(fragmentDuration.toFixed(2));
-
-  const fragmentName = mp4(`${noExt(fileName)}_${start_0}_${end_0}_${width}`);
-  fragments.push({
-    start,
-    end,
-    fragmentDuration,
-    fragmentName,
-    videoName: fileName,
-  });
 
   const mergedFragments = fragments.map((fragment, index, allframgents) => {
     // console.log(444444444, fragment.start, allframgents[index + 1]?.start);

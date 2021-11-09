@@ -17,12 +17,11 @@ const PORT = process.env.PORT || 5050;
 
 const settings = {
   produceImmediately: true,
-  finalVideoName: "hhhhhhhhhhhhhhhhhh",
   baseVideoFolder: "videos",
 };
 
 const start = async (settings) => {
-  const { baseVideoFolder, finalVideoName, produceImmediately } = settings;
+  const { baseVideoFolder, produceImmediately } = settings;
 
   fs.ensureDirSync(baseVideoFolder);
   const foldersList = getFolders(baseVideoFolder, ["myTemp", "result", "temp"]);
